@@ -1,0 +1,17 @@
+{
+  "name": "novita-opencode-sandbox",
+  "version": "1.0.0",
+  "description": "Run OpenCode and code-server inside a Novita AI Agent Sandbox",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "novita-sandbox": "^2.1.1"
+  }
+}

@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OpenCode on Novita Sandbox</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%9A%A1%3C/text%3E%3C/svg%3E"
+    />
+  </head>
+  <body>
+    <div class="app">
+      <aside class="sidebar">
+        <div class="brand">
+          <span class="brand-mark">⚡</span>
+          <div>
+            <div class="brand-title">OpenCode</div>
+            <div class="brand-sub">on Novita Sandbox</div>
+          </div>
+        </div>
+
+        <button id="new-session-btn" class="btn btn-primary btn-block">+ New Session</button>
+
+        <div class="sidebar-section">
+          <div class="sidebar-heading">Sessions</div>
+          <div id="session-list" class="session-list"></div>
+        </div>
+
+        <div class="sidebar-footer">
+          <label class="field-label" for="api-key">Novita API Key</label>
+          <input
+            id="api-key"
+            class="input"
+            type="password"
+            placeholder="sk_..."
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <p class="hint">Kept in memory only — never stored in your browser.</p>
+        </div>
+      </aside>
+
+      <main id="main" class="main"><!-- rendered by app.js --></main>
+    </div>
+
+    <div id="toast" class="toast" hidden></div>
+    <script src="app.js"></script>
+  </body>
+</html>
