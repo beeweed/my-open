@@ -1,17 +1,28 @@
-# OpenCode on Novita Sandbox
+# OpenCode Sandbox
 
 A minimal, production-ready web app that runs [OpenCode](https://opencode.ai) (an AI
 coding agent) together with [code-server](https://github.com/coder/code-server)
-(browser-based VS Code) inside a [Novita AI Agent Sandbox](https://novita.ai/sandbox).
-Both tools share the **same sandbox filesystem**, so anything OpenCode edits is
+(browser-based VS Code) inside a cloud VM sandbox.
+
+Both tools share the **same filesystem**, so anything OpenCode edits is
 immediately visible in code-server and vice-versa.
+
+## Supported providers
+
+| Provider | Docs | SDK |
+|---|---|---|
+| **Novita AI** | <https://novita.ai/sandbox> | `novita-sandbox` |
+| **Freestyle** | <https://www.freestyle.sh/docs> | `freestyle` |
+
+Select the provider in the sidebar. Each provider uses its own API key header
+and public URL format.
 
 ## Core flow
 
-1. Enter your **Novita Sandbox API key** (kept in memory only — never stored in the browser).
+1. Select a **provider** and enter your **API key** (kept in memory only — never stored in the browser).
 2. Optionally provide a **repository URL** to clone into the sandbox.
 3. Click **Run**. The server then:
-   - Creates and starts a Novita Sandbox session (template `base`).
+   - Creates and starts a sandbox/VM.
    - Clones the repository (if provided) into the shared workspace.
    - Installs and starts **OpenCode** (`opencode web`, port `4096`) and
      **code-server** (port `8080`) inside the sandbox.
@@ -26,12 +37,14 @@ immediately visible in code-server and vice-versa.
 
 ## Sessions
 
-- Session metadata (id, repository, status, creation time, sandbox connection info)
-  is stored in the browser's `localStorage`, so sessions remain visible after a reload.
+- Session metadata (id, provider, repository, status, creation time, sandbox connection info)
+   is stored in the browser's `localStorage`, so sessions remain visible after a reload.
 - Reopening a session restores its page and reconnects to the running sandbox when possible.
-- The **Novita API key is never stored** — re-enter it after a reload to reconnect.
+- **API keys are never stored** — re-enter them after a reload to reconnect.
 
 ## How ports are exposed
+
+### Novita
 
 The app uses the official `novita-sandbox` SDK. Sandboxes are created with
 `secure: false`, which makes each exposed port publicly reachable at:
@@ -40,8 +53,19 @@ The app uses the official `novita-sandbox` SDK. Sandboxes are created with
 https://<port>-<sandboxId>.<sandboxDomain>
 ```
 
-obtained via `sandbox.getHost(port)`. No mock URLs are used — every URL points at a
-real running Novita sandbox.
+obtained via `sandbox.getHost(port)`.
+
+### Freestyle
+
+The app uses the official `freestyle` SDK. For each service, a TLS ingress rule
+is created routing a free `*.style.dev` subdomain to the VM port:
+
+```
+https://<subdomain>.style.dev
+```
+
+No DNS records or certificates are needed for `style.dev` names — they are
+covered by the platform's wildcard certificate.
 
 ## Run locally
 
@@ -57,20 +81,27 @@ Optional environment variable:
 
 Get a Novita API key from <https://novita.ai/settings/key-management>.
 
+Get a Freestyle API key from <https://dash.freestyle.sh>.
+
 ## Architecture
 
 ```
 server/
-  index.js            Express API (create / reconnect / status / stop)
-  sandbox-service.js  Novita SDK integration + sandbox bootstrap script
+  index.js              Express API (create / reconnect / status / stop)
+  providers/
+    base.js             Shared constants (ports, workspace, timeout)
+    novita.js           Novita SDK integration + bootstrap script
+    freestyle.js        Freestyle SDK integration + bootstrap script
+  sandbox-service.js    Provider dispatcher
 public/
-  index.html          UI shell (sidebar + main)
-  app.js              Session management, polling, rendering
-  styles.css          Styling
+  index.html            UI shell (sidebar + main)
+  app.js                Session management, polling, rendering
+  styles.css            Styling
 ```
 
-The Novita SDK is server-side only; the API key is passed per-request via the
-`x-novita-api-key` header and never persisted on the server or sent to the browser.
+API keys are passed per-request via provider-specific headers
+(`x-novita-api-key` / `x-freestyle-api-key`) and never persisted on the server
+or sent to the browser.
 
 ## Notes
 

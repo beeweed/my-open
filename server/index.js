@@ -15,19 +15,6 @@ const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
-/**
- * The Novita API key is provided per request via a header and is never
- * persisted on the server or forwarded to the browser.
- */
-function getApiKey(req, res) {
-  const key = req.get('x-novita-api-key');
-  if (!key) {
-    res.status(401).json({ error: 'Missing Novita API key. Enter your key and try again.' });
-    return null;
-  }
-  return key;
-}
-
 function handleError(res, err) {
   console.error('[api error]', err);
   const status = err?.status || err?.statusCode || 500;
@@ -36,50 +23,36 @@ function handleError(res, err) {
   });
 }
 
-// Create a new session (sandbox + provisioning).
 app.post('/api/sessions', async (req, res) => {
-  const apiKey = getApiKey(req, res);
-  if (!apiKey) return;
   try {
-    const repoUrl = (req.body?.repoUrl || '').trim();
-    const info = await createSession({ apiKey, repoUrl });
+    const info = await createSession(req);
     res.json(info);
   } catch (err) {
     handleError(res, err);
   }
 });
 
-// Reconnect to an existing sandbox and re-ensure services.
 app.post('/api/sessions/:id/reconnect', async (req, res) => {
-  const apiKey = getApiKey(req, res);
-  if (!apiKey) return;
   try {
-    const repoUrl = (req.body?.repoUrl || '').trim();
-    const info = await reconnectSession({ apiKey, sandboxId: req.params.id, repoUrl });
+    const info = await reconnectSession(req);
     res.json(info);
   } catch (err) {
     handleError(res, err);
   }
 });
 
-// Poll status / service readiness.
 app.get('/api/sessions/:id/status', async (req, res) => {
-  const apiKey = getApiKey(req, res);
-  if (!apiKey) return;
   try {
-    const info = await checkStatus({ apiKey, sandboxId: req.params.id });
+    const info = await checkStatus(req);
     res.json(info);
   } catch (err) {
     handleError(res, err);
   }
 });
 
-// Stop (kill) a sandbox.
 app.post('/api/sessions/:id/stop', async (req, res) => {
-  const apiKey = getApiKey(req, res);
-  if (!apiKey) return;
   try {
-    const info = await stopSession({ apiKey, sandboxId: req.params.id });
+    const info = await stopSession(req);
     res.json(info);
   } catch (err) {
     handleError(res, err);
@@ -87,5 +60,5 @@ app.post('/api/sessions/:id/stop', async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Novita OpenCode Sandbox running at http://localhost:${PORT}`);
+  console.log(`OpenCode Sandbox running at http://localhost:${PORT}`);
 });

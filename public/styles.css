@@ -133,6 +133,32 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.provider-badge {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 2px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.provider-novita {
+  color: #6ea8fe;
+  border-color: rgba(110, 168, 254, 0.35);
+  background: rgba(110, 168, 254, 0.08);
+}
+
+.provider-freestyle {
+  color: #d2a8fe;
+  border-color: rgba(210, 168, 254, 0.35);
+  background: rgba(210, 168, 254, 0.08);
 }
 
 .empty-hint {

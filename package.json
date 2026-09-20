@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "express": "^4.19.2",
+    "freestyle": "^0.2.13",
     "novita-sandbox": "^2.1.1"
   }
 }

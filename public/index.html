@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>OpenCode on Novita Sandbox</title>
+    <title>OpenCode Sandbox</title>
     <link rel="stylesheet" href="styles.css" />
     <link
       rel="icon"
@@ -17,7 +17,7 @@
           <span class="brand-mark">⚡</span>
           <div>
             <div class="brand-title">OpenCode</div>
-            <div class="brand-sub">on Novita Sandbox</div>
+            <div class="brand-sub" id="brand-sub">on Novita Sandbox</div>
           </div>
         </div>
 
@@ -29,7 +29,15 @@
         </div>
 
         <div class="sidebar-footer">
-          <label class="field-label" for="api-key">Novita API Key</label>
+          <div class="form-group">
+            <label class="field-label" for="provider">Provider</label>
+            <select id="provider" class="input">
+              <option value="novita">Novita AI</option>
+              <option value="freestyle">Freestyle</option>
+            </select>
+          </div>
+
+          <label class="field-label" id="api-key-label" for="api-key">Novita API Key</label>
           <input
             id="api-key"
             class="input"
@@ -38,7 +46,7 @@
             autocomplete="off"
             spellcheck="false"
           />
-          <p class="hint">Kept in memory only — never stored in your browser.</p>
+          <p class="hint" id="api-key-hint">Kept in memory only — never stored in your browser.</p>
         </div>
       </aside>
 

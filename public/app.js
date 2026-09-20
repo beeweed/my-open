@@ -1,21 +1,46 @@
-/* OpenCode on Novita Sandbox — front-end controller.
+/* OpenCode Sandbox — front-end controller.
  *
  * - Session metadata is persisted in localStorage so sessions survive reloads.
- * - The Novita API key is kept in memory only (never written to storage).
+ * - API keys are kept in memory only (never written to storage).
  */
 
-const STORAGE_KEY = 'novita-opencode-sessions';
+const STORAGE_KEY = 'sandbox-sessions';
 const els = {
   main: document.getElementById('main'),
   list: document.getElementById('session-list'),
   apiKey: document.getElementById('api-key'),
+  provider: document.getElementById('provider'),
   newBtn: document.getElementById('new-session-btn'),
   toast: document.getElementById('toast'),
+};
+
+const PROVIDER_META = {
+  novita: {
+    label: 'Novita AI',
+    apiKeyLabel: 'Novita API Key',
+    apiKeyPlaceholder: 'sk_...',
+    apiKeyHint: 'Kept in memory only — never stored in your browser.',
+    sessionLabel: 'Spin up OpenCode and code-server inside a Novita AI Agent Sandbox.',
+    step1: 'Create & start a Novita Sandbox session',
+  },
+  freestyle: {
+    label: 'Freestyle',
+    apiKeyLabel: 'Freestyle API Key',
+    apiKeyPlaceholder: 'fs_...',
+    apiKeyHint: 'Kept in memory only — never stored in your browser.',
+    sessionLabel: 'Spin up OpenCode and code-server inside a Freestyle VM.',
+    step1: 'Create & start a Freestyle VM',
+  },
 };
 
 let sessions = loadSessions();
 let activeId = null;
 let pollTimer = null;
+let currentProvider = (localStorage.getItem('sandbox-provider') || 'novita').toLowerCase();
+
+function currentMeta() {
+  return PROVIDER_META[currentProvider] || PROVIDER_META.novita;
+}
 
 /* ---------------- storage ---------------- */
 function loadSessions() {
@@ -47,6 +72,10 @@ function apiKey() {
   return els.apiKey.value.trim();
 }
 
+function selectedProvider() {
+  return (els.provider?.value || currentProvider).toLowerCase();
+}
+
 function toast(message, isError = false) {
   els.toast.textContent = message;
   els.toast.classList.toggle('error', isError);
@@ -55,10 +84,15 @@ function toast(message, isError = false) {
   toast._t = setTimeout(() => (els.toast.hidden = true), 4000);
 }
 
+function apiKeyHeader(provider) {
+  return provider === 'freestyle' ? 'x-freestyle-api-key' : 'x-novita-api-key';
+}
+
 async function api(path, options = {}) {
+  const provider = selectedProvider();
   const key = apiKey();
   if (!key) {
-    toast('Enter your Novita API key first.', true);
+    toast(`Enter your ${currentMeta().label} API key first.`, true);
     els.apiKey.focus();
     throw new Error('missing api key');
   }
@@ -66,7 +100,7 @@ async function api(path, options = {}) {
     ...options,
     headers: {
       'Content-Type': 'application/json',
-      'x-novita-api-key': key,
+      [apiKeyHeader(provider)]: key,
       ...(options.headers || {}),
     },
   });
@@ -105,6 +139,11 @@ function statusMeta(status) {
   }
 }
 
+function providerBadge(provider) {
+  const meta = PROVIDER_META[provider] || PROVIDER_META.novita;
+  return `<span class="provider-badge provider-${provider}">${meta.label}</span>`;
+}
+
 /* ---------------- sidebar ---------------- */
 function renderSessionList() {
   if (!sessions.length) {
@@ -121,7 +160,7 @@ function renderSessionList() {
         <span class="session-item-name">${escapeHtml(s.name)}</span>
         <span class="status-badge ${meta.cls}"><span class="status-dot"></span>${meta.label}</span>
       </div>
-      <div class="session-item-meta">${escapeHtml(repoLabel(s.repoUrl))} · ${timeAgo(s.createdAt)}</div>`;
+      <div class="session-item-meta">${providerBadge(s.provider || 'novita')} ${escapeHtml(repoLabel(s.repoUrl))} · ${timeAgo(s.createdAt)}</div>`;
     item.onclick = () => openSession(s.id);
     els.list.appendChild(item);
   }
@@ -129,8 +168,23 @@ function renderSessionList() {
 
 function escapeHtml(str) {
   return String(str ?? '').replace(/[&<>"']/g, (c) => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
   }[c]));
+}
+
+function updateSidebarLabels() {
+  const meta = currentMeta();
+  const keyLabel = document.getElementById('api-key-label');
+  const keyHint = document.getElementById('api-key-hint');
+  const brandSub = document.querySelector('.brand-sub');
+  if (keyLabel) keyLabel.textContent = meta.apiKeyLabel;
+  if (els.apiKey) els.apiKey.placeholder = meta.apiKeyPlaceholder;
+  if (keyHint) keyHint.textContent = meta.apiKeyHint;
+  if (brandSub) brandSub.textContent = `on ${meta.label}`;
 }
 
 /* ---------------- new session view ---------------- */
@@ -138,10 +192,19 @@ function renderNewSession() {
   activeId = null;
   stopPolling();
   renderSessionList();
+  const meta = currentMeta();
   els.main.innerHTML = `
     <div class="panel">
       <h1>New Session</h1>
-      <p class="lead">Spin up OpenCode and code-server inside a fresh Novita AI Agent Sandbox.</p>
+      <p class="lead">${meta.sessionLabel}</p>
+
+      <div class="form-group">
+        <label for="provider-select">Provider</label>
+        <select id="provider-select" class="input">
+          <option value="novita" ${currentProvider === 'novita' ? 'selected' : ''}>Novita AI</option>
+          <option value="freestyle" ${currentProvider === 'freestyle' ? 'selected' : ''}>Freestyle</option>
+        </select>
+      </div>
 
       <div class="form-group">
         <label for="new-name">Session name (optional)</label>
@@ -158,17 +221,29 @@ function renderNewSession() {
       <div class="steps">
         Clicking <strong>Run</strong> will:
         <ol>
-          <li>Create &amp; start a Novita Sandbox session</li>
+          <li>${meta.step1}</li>
           <li>Clone the repository (if provided)</li>
           <li>Install &amp; start OpenCode and code-server on the shared filesystem</li>
           <li>Expose the ports and detect the live URLs</li>
         </ol>
       </div>
     </div>`;
+
+  const providerSelect = document.getElementById('provider-select');
+  if (providerSelect) {
+    providerSelect.value = currentProvider;
+    providerSelect.onchange = () => {
+      currentProvider = providerSelect.value.toLowerCase();
+      localStorage.setItem('sandbox-provider', currentProvider);
+      updateSidebarLabels();
+      renderNewSession();
+    };
+  }
   document.getElementById('run-btn').onclick = runNewSession;
 }
 
 async function runNewSession() {
+  const provider = selectedProvider();
   const btn = document.getElementById('run-btn');
   const name = document.getElementById('new-name').value.trim();
   const repoUrl = document.getElementById('new-repo').value.trim();
@@ -177,13 +252,13 @@ async function runNewSession() {
   try {
     const info = await api('/api/sessions', {
       method: 'POST',
-      body: JSON.stringify({ repoUrl }),
+      body: JSON.stringify({ provider, repoUrl }),
     });
     const session = {
       id: info.sandboxId,
+      provider: info.provider || provider,
       name: name || repoLabel(repoUrl) || 'Session',
       repoUrl,
-      sandboxDomain: info.sandboxDomain,
       opencodeUrl: info.opencodeUrl,
       codeServerUrl: info.codeServerUrl,
       status: info.status || 'provisioning',
@@ -242,11 +317,12 @@ function renderSessionPage() {
   const s = getSession(activeId);
   if (!s) return renderNewSession();
   const meta = statusMeta(s.status);
+  const provider = s.provider || 'novita';
   els.main.innerHTML = `
     <div class="session-header">
       <div class="session-title">
         <h1>${escapeHtml(s.name)}</h1>
-        <div class="sub">${escapeHtml(repoLabel(s.repoUrl))} · Sandbox <code>${escapeHtml(s.id)}</code></div>
+        <div class="sub">${providerBadge(provider)} ${escapeHtml(repoLabel(s.repoUrl))} · Sandbox <code>${escapeHtml(s.id)}</code></div>
       </div>
       <div class="session-actions">
         <span class="status-badge ${meta.cls}" id="status-badge">
@@ -275,7 +351,8 @@ async function pollStatus() {
   const s = getSession(activeId);
   if (!s) return;
   try {
-    const info = await api(`/api/sessions/${encodeURIComponent(s.id)}/status`);
+    const provider = s.provider || 'novita';
+    const info = await api(`/api/sessions/${encodeURIComponent(s.id)}/status?provider=${encodeURIComponent(provider)}`);
     const prev = { status: s.status, opencodeReady: s.opencodeReady, codeServerReady: s.codeServerReady };
     upsertSession({
       id: s.id,
@@ -285,7 +362,6 @@ async function pollStatus() {
       opencodeUrl: info.opencodeUrl || s.opencodeUrl,
       codeServerUrl: info.codeServerUrl || s.codeServerUrl,
     });
-    // Re-render only when something visible changed to avoid reloading iframes.
     const cur = getSession(s.id);
     if (
       activeId === s.id &&
@@ -310,7 +386,7 @@ async function reconnectSession() {
   try {
     const info = await api(`/api/sessions/${encodeURIComponent(s.id)}/reconnect`, {
       method: 'POST',
-      body: JSON.stringify({ repoUrl: s.repoUrl }),
+      body: JSON.stringify({ provider: s.provider || 'novita', repoUrl: s.repoUrl }),
     });
     upsertSession({
       id: s.id,
@@ -344,7 +420,10 @@ async function stopSession() {
   btn.disabled = true;
   btn.textContent = 'Stopping…';
   try {
-    await api(`/api/sessions/${encodeURIComponent(s.id)}/stop`, { method: 'POST' });
+    await api(`/api/sessions/${encodeURIComponent(s.id)}/stop`, {
+      method: 'POST',
+      body: JSON.stringify({ provider: s.provider || 'novita' }),
+    });
     upsertSession({ id: s.id, status: 'stopped', opencodeReady: false, codeServerReady: false });
     stopPolling();
     renderSessionPage();
@@ -362,6 +441,16 @@ function stopPolling() {
 }
 
 /* ---------------- boot ---------------- */
+if (els.provider) {
+  els.provider.value = currentProvider;
+  els.provider.onchange = () => {
+    currentProvider = els.provider.value.toLowerCase();
+    localStorage.setItem('sandbox-provider', currentProvider);
+    updateSidebarLabels();
+  };
+}
+
+updateSidebarLabels();
 els.newBtn.onclick = renderNewSession;
 renderSessionList();
 renderNewSession();
